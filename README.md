@@ -15,7 +15,7 @@ A package for high fidelity simulations of laminar reacting flows in OF-8 with l
 
 - Specify the path of the _src_ directory of this package to an environment variable named _LIB_DTL_SRC_. Suppose the _DTLreactingFoam-8_ have downloaded into _yourDirectory_. Then the following commands should be executed to specify the path of the _src_:
 
-		echo "export LIB_DTL8_SRC=~/OpenFOAM/yourDirectory/DTLreactingFoam-8/src/" >> ~/.bashrc
+		echo "export LIB_DTL_SRC=~/OpenFOAM/yourDirectory/DTLreactingFoam-8/src/" >> ~/.bashrc
 		source ~/.bashrc
 
 - To compile the necessary libraries and solver, go to _DTLreactingFoam-8_ directory and run the _Allwmake_ script (it may take one hour to be finished):
