@@ -528,6 +528,9 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
     scalarField& kappaCells = kappaNew_.primitiveFieldRef();
     scalarField& WmixCells = WmixNew_.primitiveFieldRef();
 
+    // For CoTHERMStepCount
+    scalarField& CountCells = coTHERMStepCount_.primitiveFieldRef();
+
     scalarField& TCellsOld = this->T_.oldTime().primitiveFieldRef();
     scalarField& PCellsOld = this->p_.oldTime().primitiveFieldRef();
 
@@ -547,13 +550,19 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
         scalar coDeltaT = mag(TCells[celli] - TCellsOld[celli]);
         scalar coDeltaP = mag(pCells[celli] - PCellsOld[celli]);
 
+        const bool exceedCount = (CountCells[celli] >= maxCoTHERMStepCount_);
+
         if 
         ( 
             (coDeltaT <= epsilonT_) && 
             (this->flagSpecies_[celli] < 1.0 ) &&
-            (coDeltaP <= epsilonP_) 
+            (coDeltaP <= epsilonP_) &&
+            (!exceedCount)             
         )
         {
+            // start counter
+            CountCells[celli] += 1.0;
+
             // don't need to re-calculate thermophysical properties
             // just copy from old time 
             flagCell_.primitiveFieldRef()[celli] = 0.0;
@@ -580,9 +589,13 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
         (
             (coDeltaT <= epsilonT_) && 
             (this->flagSpecies_[celli] < 1.0 ) &&
-            !(coDeltaP <= epsilonP_)
+            !(coDeltaP <= epsilonP_) &&
+            (!exceedCount)            
         )
         {
+            // reset counter
+            CountCells[celli] = 0.0;
+
             // only re-calculate Dimix
             // for other thermophysical properties, copy from old time
             flagCell_.primitiveFieldRef()[celli] = 0.5;
@@ -607,6 +620,9 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
         }
         else
         {
+            // reset counter
+            CountCells[celli] = 0.0;
+
             // otherwise, re-calculate all thermophysical properties 
             flagCell_.primitiveFieldRef()[celli] = 1.0;
             psiCells[celli] = mixture_.psi(pCells[celli], TCells[celli]);
@@ -642,6 +658,8 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
     volScalarField::Boundary& kappaBf = kappaNew_.boundaryFieldRef();
     volScalarField::Boundary& WmixBf = WmixNew_.boundaryFieldRef();
 
+    volScalarField::Boundary& CountBf  = coTHERMStepCount_.boundaryFieldRef();
+
     // old fields
     volScalarField::Boundary& TBfOld =
         this->T_.oldTime().boundaryFieldRef();
@@ -673,6 +691,7 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
         fvPatchScalarField& pCp = CpBf[patchi];
         fvPatchScalarField& pkappa = kappaBf[patchi];
         fvPatchScalarField& pWmix = WmixBf[patchi];
+        fvPatchScalarField& pCount  = CountBf[patchi];
 
         // old fields
         fvPatchScalarField& pTOld = TBfOld[patchi]; 
@@ -693,13 +712,19 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
                 scalar coDeltaTp = mag(pT[facei] - pTOld[facei]);
                 scalar coDeltaPp = mag(pp[facei] - ppOld[facei]);
 
+                const bool exceedCountP = (pCount[facei] >= maxCoTHERMStepCount_);
+
                 if 
                 ( 
                     (coDeltaTp <= epsilonT_) && 
                     ( this->flagSpecies_.boundaryFieldRef()[patchi][facei] < 1.0) && 
-                    (coDeltaPp <= epsilonP_)                    
+                    (coDeltaPp <= epsilonP_) &&
+                    (!exceedCountP)                                       
                 )
                 {
+                    // start counter
+                    pCount[facei] += 1.0;
+
                     // don't need to re-calculate thermophysical properties
                     // just copy from old time
                     flagCell_.boundaryFieldRef()[patchi][facei] = 0.0;
@@ -727,9 +752,13 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
                 (
                     (coDeltaTp <= epsilonT_) && 
                     ( this->flagSpecies_.boundaryFieldRef()[patchi][facei] < 1.0) && 
-                    !(coDeltaPp <= epsilonP_)   
+                    !(coDeltaPp <= epsilonP_) &&
+                    (!exceedCountP)                     
                 )
                 {
+                    // reset counter
+                    pCount[facei] = 0.0;
+
                     // only re-calculate Dimix
                     // for other thermophysical properties, copy from old time
                     flagCell_.boundaryFieldRef()[patchi][facei] = 0.5;
@@ -755,6 +784,9 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
                 }
                 else
                 {
+                    // reset counter
+                    pCount[facei] = 0.0;
+
                     // otherwise, re-calculate all thermophysical properties 
                     flagCell_.boundaryFieldRef()[patchi][facei] = 1.0;
                     phe[facei] = mixture_.HE(pp[facei], pT[facei]);
@@ -794,13 +826,19 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
                 scalar coDeltaTp = mag(pT[facei] - pTOld[facei]);
                 scalar coDeltaPp = mag(pp[facei] - ppOld[facei]);
 
+                const bool exceedCountP = (pCount[facei] >= maxCoTHERMStepCount_);
+
                 if 
                 ( 
                     (coDeltaTp <= epsilonT_) && 
                     ( this->flagSpecies_.boundaryFieldRef()[patchi][facei] < 1.0) &&
-                    (coDeltaPp <= epsilonP_) 
+                    (coDeltaPp <= epsilonP_) &&
+                    (!exceedCountP)                    
                 )
                 {
+                    // start counter
+                    pCount[facei] += 1.0;
+
                     // don't need to re-calculate thermophysical properties
                     // just copy from old time 
                     flagCell_.boundaryFieldRef()[patchi][facei] = 0.0;
@@ -828,9 +866,13 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
                 (
                     (coDeltaTp <= epsilonT_) && 
                     ( this->flagSpecies_.boundaryFieldRef()[patchi][facei] < 1.0) &&
-                    !(coDeltaPp <= epsilonP_) 
+                    !(coDeltaPp <= epsilonP_) &&
+                    (!exceedCountP)                     
                 ) 
                 {
+                    // reset counter
+                    pCount[facei] = 0.0;
+
                     // only re-calculate Dimix
                     // for other thermophysical properties, copy from old time
                     flagCell_.boundaryFieldRef()[patchi][facei] = 0.5;
@@ -857,6 +899,9 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculateUsingCoTHERM()
                 }
                 else
                 {
+                    // reset counter
+                    pCount[facei] = 0.0;
+                    
                     // otherwise, re-calculate all thermophysical properties 
                     flagCell_.boundaryFieldRef()[patchi][facei] = 1.0;
                     ppsi[facei] = mixture_.psi(pp[facei], pT[facei]);
@@ -1165,7 +1210,25 @@ Foam::hePsiThermo<BasicPsiThermo, MixtureType>::hePsiThermo
         ),
         mesh,
         dimensionedScalar("flagCell", dimensionSet(0, 0, 0, 0, 0), 1.0)
-    )    
+    ),
+    coTHERMStepCount_
+    (
+        IOobject
+        (
+            "coTHERMStepCount",
+            mesh.time().timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("coTHERMStepCount", dimensionSet(0, 0, 0, 0, 0), 0.0)
+    ),
+    maxCoTHERMStepCount_
+    (
+        thermoDict_.lookupOrDefault("maxCoTHERMStepCount", 100)
+    ),
+    mode_(0)    
 {
 
     //
@@ -1239,6 +1302,59 @@ Foam::hePsiThermo<BasicPsiThermo, MixtureType>::hePsiThermo
     //Info << "usingDetailedTransportModel = " << this->usingDetailedTransportModel_ << endl;
     //Info << "usingPreProcessingFTM = " << this->usingPreProcessingFTM_ << endl;
     //Info << "usingCoTHERM_ = " << this->usingCoTHERM_ << endl;
+
+    // check and setup coTHERM mode - Nam
+    if 
+    (
+        usingDetailedTransportModel_ && 
+        !usingCoTHERM_ && 
+        !usingCoTHERMOnlyT_ &&
+        !usingPreProcessingFTM_       
+    )
+    {
+        //modeName_ = "DetailedModels";        
+        mode_ = 1;
+    }
+    else if 
+    (
+        usingDetailedTransportModel_ && 
+        usingCoTHERM_ && 
+        !usingCoTHERMOnlyT_ &&
+        !usingPreProcessingFTM_       
+    )
+    {
+        //modeName_ = "coTHERM";        
+        mode_ = 2;
+    }
+    else if
+    (
+        usingDetailedTransportModel_ && 
+        !usingCoTHERM_ && 
+        !usingCoTHERMOnlyT_ &&
+        usingPreProcessingFTM_        
+    )
+    {
+        //modeName_ = "preprocessingCoTHERM";
+        mode_ = 3;
+    }
+    else if 
+    (
+        usingDetailedTransportModel_ && 
+        !usingCoTHERM_ && 
+        usingCoTHERMOnlyT_ && 
+        !usingPreProcessingFTM_       
+    )
+    {
+        //modeName_ = "CoTHERMonlyT";
+        mode_ = 4;
+    }
+    else
+    {
+        //modeName_ = "originalOpenFOAM";
+        mode_ = 0;
+    }
+    // Nam 
+
     
     initialize();
 
@@ -1268,26 +1384,30 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::correct()
     // force the saving of the old-time values
     this->psi_.oldTime();
 
-    if(usingDetailedTransportModel_ && usingCoTHERM_ && !usingCoTHERMOnlyT_)
+    // Nam
+    switch(mode_)
     {
-        calculateUsingCoTHERM();
+        case 1 : 
+            initialize();            
+            break; 
+            
+        case 2 : 
+            calculateUsingCoTHERM();
+            break;      
+            
+        case 3 : 
+            calculateTransportPreProcessing();
+            break; 
+
+        case 4 : 
+            calculateUsingCoTHERMOnlyT();
+            break; 
+            
+        default:
+            calculate();
+            break; 
     }
-    else if (usingDetailedTransportModel_ && !usingCoTHERM_ && usingCoTHERMOnlyT_)
-    {
-        calculateUsingCoTHERMOnlyT();
-    }
-    else if (usingDetailedTransportModel_ && !usingCoTHERM_ && !usingCoTHERMOnlyT_)
-    {
-        initialize();
-    }
-    else if (usingPreProcessingFTM_)
-    {
-        calculateTransportPreProcessing();
-    }
-    else
-    {
-        calculate();
-    } 
+
 
     if (debug)
     {

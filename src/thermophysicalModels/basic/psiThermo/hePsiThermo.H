@@ -103,6 +103,16 @@ class hePsiThermo
         volScalarField residualT_;
         volScalarField residualP_;            
         volScalarField flagCell_; 
+
+        // to avoid coTHERM copy forever 
+        // Number of consecutive CoTHERM-based reuse steps per cell
+        volScalarField coTHERMStepCount_;
+        // Maximum allowed reuse count before forcing detailed recalculation
+        scalar maxCoTHERMStepCount_;
+
+        //- coTHERM modes
+        int mode_;
+
         //- Construct as copy (not implemented)
         hePsiThermo(const hePsiThermo<BasicPsiThermo, MixtureType>&);
 
