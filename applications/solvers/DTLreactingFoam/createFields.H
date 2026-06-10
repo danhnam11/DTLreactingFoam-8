@@ -167,7 +167,8 @@ volScalarField sumHeatDiffusion
         runTime.timeName(),
         mesh,
         IOobject::NO_READ,
-        IOobject::AUTO_WRITE
+        IOobject::NO_WRITE
+        //IOobject::AUTO_WRITE
     ),
     mesh,
     dimensionedScalar("sumHeatDiffusion", dimensionSet(1, -1, -3, 0, 0), 0.)
@@ -181,7 +182,8 @@ volScalarField sumHeatDiffusion2
         runTime.timeName(),
         mesh,
         IOobject::NO_READ,
-        IOobject::AUTO_WRITE
+        //IOobject::AUTO_WRITE
+        IOobject::NO_WRITE
     ),
     mesh,
     dimensionedScalar("sumHeatDiffusion2", dimensionSet(1, -1, -3, 0, 0), 0.)
@@ -246,7 +248,8 @@ forAll(Dimix, i)
                runTime.timeName(),
                mesh,
                IOobject::NO_READ,
-               IOobject::AUTO_WRITE 
+               IOobject::NO_WRITE
+               //IOobject::AUTO_WRITE 
              ), 
              thermo.Dimix(i)
          )
@@ -270,7 +273,8 @@ forAll(hei, i)
                runTime.timeName(),
                mesh,
                IOobject::NO_READ,
-               IOobject::AUTO_WRITE 
+               IOobject::NO_WRITE
+               //IOobject::AUTO_WRITE 
              ), 
              thermo.hei(i)
          )
